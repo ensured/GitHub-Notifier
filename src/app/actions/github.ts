@@ -165,7 +165,10 @@ export async function searchUserRepositories(username: string, token?: string) {
   }
 
   try {
-    // Fetch repositories first
+    // Fetch user information first
+    const user = await fetchGitHubAPI(`/users/${username}`, token);
+
+    // Fetch repositories
     const repos = await fetchGitHubAPI(
       `/users/${username}/repos?per_page=100&sort=updated&direction=desc`,
       token
@@ -173,6 +176,7 @@ export async function searchUserRepositories(username: string, token?: string) {
 
     if (repos.length === 0) {
       return {
+        user,
         repos: [],
         reposWithCommits: [],
         commits: [],
@@ -232,6 +236,7 @@ export async function searchUserRepositories(username: string, token?: string) {
     const firstRepoCommits = reposWithCommits[0]?.commits || [];
 
     return {
+      user,
       repos: reposWithCommits.map((repo) => repo.name),
       reposWithCommits,
       commits: firstRepoCommits,
