@@ -1,6 +1,6 @@
 "use server";
 import axios from "axios";
-import { getGitHubToken } from "@/lib/github-token";
+import { getGitHubToken } from "@/lib/getGitHubToken";
 export interface GitHubUser {
   login: string;
   id: number;
@@ -83,7 +83,9 @@ export async function getUser(
   try {
     return await fetchGitHubAPI(`/users/${username}`, token);
   } catch (error: unknown) {
-    const axiosError = error as { response?: { status: number; statusText: string } };
+    const axiosError = error as {
+      response?: { status: number; statusText: string };
+    };
     if (axiosError.response?.status === 404) {
       throw new Error("User not found");
     }
@@ -112,7 +114,9 @@ export async function getUserRepos(
       token
     );
   } catch (error: unknown) {
-    const axiosError = error as { response?: { status: number; statusText: string } };
+    const axiosError = error as {
+      response?: { status: number; statusText: string };
+    };
     if (axiosError.response?.status === 404) {
       throw new Error("User not found");
     }
@@ -139,7 +143,9 @@ export async function getRepoCommits(
       token
     );
   } catch (error: unknown) {
-    const axiosError = error as { response?: { status: number; statusText: string } };
+    const axiosError = error as {
+      response?: { status: number; statusText: string };
+    };
     if (axiosError.response?.status === 404) {
       throw new Error("Repository not found");
     }
@@ -231,7 +237,9 @@ export async function searchUserRepositories(username: string, token?: string) {
       commits: firstRepoCommits,
     };
   } catch (error: unknown) {
-    const axiosError = error as { response?: { status: number; statusText: string } };
+    const axiosError = error as {
+      response?: { status: number; statusText: string };
+    };
     if (axiosError.response?.status === 404) {
       throw new Error("User not found");
     }
