@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/select";
 import { Loader2, Mail, CheckCircle, XCircle } from "lucide-react";
 import { GitHubRepo, GitHubCommit } from "@/lib/github-api";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistance } from "date-fns";
 import { getRepoCommits, searchUserRepositories } from "@/app/actions/github";
 import { getGitHubToken } from "@/lib/github-token";
 import { createSubscription } from "@/app/actions/subscriptions";
@@ -42,7 +42,17 @@ export default function GitHubWatcher() {
   const [subscriptionError, setSubscriptionError] = useState("");
   const [subscriptionSuccess, setSubscriptionSuccess] = useState("");
   const [isSubscribed, setIsSubscribed] = useState(false);
+  const [currentTime, setCurrentTime] = useState(new Date());
   const searchInProgressRef = useRef(false);
+
+  // Update current time every minute to refresh relative dates
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 60000); // Update every minute
+
+    return () => clearInterval(interval);
+  }, []);
 
   const handleSearch = async () => {
     if (!username) {
@@ -248,8 +258,9 @@ export default function GitHubWatcher() {
                       (r) => r.name === repo
                     );
                     const formattedDate = repoWithCommit?.lastCommitDate
-                      ? formatDistanceToNow(
+                      ? formatDistance(
                           new Date(repoWithCommit.lastCommitDate),
+                          currentTime,
                           { addSuffix: true }
                         )
                       : "No commits";
@@ -421,9 +432,11 @@ export default function GitHubWatcher() {
                           <div className="flex items-center gap-4 text-sm text-muted-foreground">
                             <span>
                               {commit.commit.author?.date
-                                ? new Date(
-                                    commit.commit.author.date
-                                  ).toLocaleDateString()
+                                ? formatDistance(
+                                    new Date(commit.commit.author.date),
+                                    currentTime,
+                                    { addSuffix: true }
+                                  )
                                 : "Unknown date"}
                             </span>
                             <span className="flex items-center gap-1">
