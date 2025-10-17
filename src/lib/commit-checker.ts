@@ -2,13 +2,6 @@ import { prisma } from "@/lib/db";
 import { sendCommitNotificationEmail } from "@/lib/email";
 import { getUserRepos, getRepoCommits, GitHubCommit } from "@/app/actions/github";
 
-interface CommitCheck {
-  subscriptionId: string;
-  username: string;
-  email: string;
-  lastChecked?: Date | null;
-}
-
 export async function checkForNewCommits() {
   try {
     // Get all active subscriptions
@@ -22,7 +15,7 @@ export async function checkForNewCommits() {
     }
 
     // Group subscriptions by username for efficient API calls
-    const subscriptionsByUser = subscriptions.reduce((acc: Record<string, typeof subscriptions>, sub: any) => {
+    const subscriptionsByUser = subscriptions.reduce((acc: Record<string, typeof subscriptions>, sub) => {
       if (!acc[sub.username]) {
         acc[sub.username] = [];
       }
@@ -49,8 +42,8 @@ export async function checkForNewCommits() {
   }
 }
 
-async function checkUserCommits(subscription: any, repos: any[]) {
-  const { id: subscriptionId, username, email, lastChecked } = subscription;
+async function checkUserCommits(subscription: { id: string; username: string; email: string; lastChecked?: Date | null }, repos: { name: string }[]) {
+  const { id: subscriptionId, username, lastChecked } = subscription;
 
   for (const repo of repos) {
     try {

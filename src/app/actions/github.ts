@@ -50,7 +50,7 @@ export interface GitHubCommit {
   html_url: string;
 }
 
-async function fetchGitHubAPI(endpoint: string, token?: string): Promise<any> {
+async function fetchGitHubAPI(endpoint: string, token?: string) {
   const baseUrl = "https://api.github.com";
   // Use provided token or get from environment/storage
   const authToken = token || getGitHubToken();
@@ -82,14 +82,15 @@ export async function getUser(
 
   try {
     return await fetchGitHubAPI(`/users/${username}`, token);
-  } catch (error: any) {
-    if (error.response?.status === 404) {
+  } catch (error: unknown) {
+    const axiosError = error as { response?: { status: number; statusText: string } };
+    if (axiosError.response?.status === 404) {
       throw new Error("User not found");
     }
-    if (error.response?.status === 403) {
+    if (axiosError.response?.status === 403) {
       throw new Error("Rate limit exceeded. Please try again later.");
     }
-    if (error.response?.status === 401) {
+    if (axiosError.response?.status === 401) {
       throw new Error("Authentication failed. Please check your GitHub token.");
     }
     throw new Error("Failed to fetch user data");
@@ -110,11 +111,12 @@ export async function getUserRepos(
       `/users/${username}/repos?per_page=${perPage}&sort=updated&direction=desc`,
       token
     );
-  } catch (error: any) {
-    if (error.response?.status === 404) {
+  } catch (error: unknown) {
+    const axiosError = error as { response?: { status: number; statusText: string } };
+    if (axiosError.response?.status === 404) {
       throw new Error("User not found");
     }
-    if (error.response?.status === 403) {
+    if (axiosError.response?.status === 403) {
       throw new Error("Rate limit exceeded. Please try again later.");
     }
     throw new Error("Failed to fetch repositories");
@@ -136,14 +138,15 @@ export async function getRepoCommits(
       `/repos/${owner}/${repo}/commits?per_page=${perPage}`,
       token
     );
-  } catch (error: any) {
-    if (error.response?.status === 404) {
+  } catch (error: unknown) {
+    const axiosError = error as { response?: { status: number; statusText: string } };
+    if (axiosError.response?.status === 404) {
       throw new Error("Repository not found");
     }
-    if (error.response?.status === 403) {
+    if (axiosError.response?.status === 403) {
       throw new Error("Rate limit exceeded. Please try again later.");
     }
-    if (error.response?.status === 401) {
+    if (axiosError.response?.status === 401) {
       throw new Error("Authentication failed. Please check your GitHub token.");
     }
     throw new Error("Failed to fetch commits");
@@ -227,14 +230,15 @@ export async function searchUserRepositories(username: string, token?: string) {
       reposWithCommits,
       commits: firstRepoCommits,
     };
-  } catch (error: any) {
-    if (error.response?.status === 404) {
+  } catch (error: unknown) {
+    const axiosError = error as { response?: { status: number; statusText: string } };
+    if (axiosError.response?.status === 404) {
       throw new Error("User not found");
     }
-    if (error.response?.status === 403) {
+    if (axiosError.response?.status === 403) {
       throw new Error("Rate limit exceeded. Please try again later.");
     }
-    if (error.response?.status === 401) {
+    if (axiosError.response?.status === 401) {
       throw new Error("Authentication failed. Please check your GitHub token.");
     }
     throw new Error("Failed to search repositories");

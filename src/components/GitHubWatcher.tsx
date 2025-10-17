@@ -15,12 +15,11 @@ import { Loader2, Mail, CheckCircle, XCircle } from "lucide-react";
 import { GitHubRepo, GitHubCommit } from "@/lib/github-api";
 import { formatDistanceToNow } from "date-fns";
 import {
-  getUserRepos,
   getRepoCommits,
   searchUserRepositories,
 } from "@/app/actions/github";
 import { getGitHubToken } from "@/lib/github-token";
-import { createSubscription, getSubscriptions, deleteSubscription } from "@/app/actions/subscriptions";
+import { createSubscription } from "@/app/actions/subscriptions";
 
 interface RepoWithLastCommit extends GitHubRepo {
   lastCommitDate: string | null;
@@ -122,9 +121,9 @@ export default function GitHubWatcher() {
       } else {
         setSubscriptionError(result.error || "Failed to subscribe");
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Subscription error:", error);
-      setSubscriptionError(`Failed to subscribe: ${error.message || "Unknown error"}`);
+      setSubscriptionError(`Failed to subscribe: ${error instanceof Error ? error.message : "Unknown error"}`);
     } finally {
       setSubscriptionLoading(false);
     }
@@ -286,7 +285,7 @@ export default function GitHubWatcher() {
                 <div className="flex items-center gap-2 p-3 rounded-lg bg-green-50 border border-green-200">
                   <CheckCircle className="w-4 h-4 text-green-600" />
                   <span className="text-sm text-green-700">
-                    You're subscribed to {username}'s commits!
+                    You&apos;re subscribed to {username}&apos;s commits!
                   </span>
                 </div>
               ) : (

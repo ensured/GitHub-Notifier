@@ -25,17 +25,20 @@ export async function createSubscription(data: CreateSubscriptionData) {
 
     revalidatePath("/");
     return { success: true, subscription };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error creating subscription:", error);
 
-    if (error.code === "P2002") {
+    if (error && typeof error === 'object' && 'code' in error && error.code === "P2002") {
       return { success: false, error: "You're already subscribed to this user" };
     }
 
     // Return more specific error information
+    const errorMessage = error && typeof error === 'object' && 'message' in error
+      ? (error as { message: string }).message
+      : "Unknown error";
     return {
       success: false,
-      error: `Failed to create subscription: ${error.message || "Unknown error"}`
+      error: `Failed to create subscription: ${errorMessage}`
     };
   }
 }
@@ -48,7 +51,7 @@ export async function getSubscriptions(email?: string) {
     });
 
     return { success: true, subscriptions };
-  } catch (error) {
+  } catch {
     return { success: false, error: "Failed to fetch subscriptions" };
   }
 }
@@ -61,7 +64,7 @@ export async function deleteSubscription(id: string) {
 
     revalidatePath("/");
     return { success: true };
-  } catch (error) {
+  } catch {
     return { success: false, error: "Failed to delete subscription" };
   }
 }
@@ -74,7 +77,7 @@ export async function updateSubscriptionLastChecked(id: string) {
     });
 
     return { success: true };
-  } catch (error) {
+  } catch {
     return { success: false, error: "Failed to update last checked" };
   }
 }
