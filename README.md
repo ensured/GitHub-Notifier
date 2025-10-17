@@ -1,36 +1,216 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# GitHub Notifier (GitPulse)
 
-## Getting Started
+A Next.js application that monitors GitHub users for new commits and sends email notifications via Resend.
 
-First, run the development server:
+## Features
+
+- 🔍 **Real-time GitHub Monitoring**: Search and view GitHub user repositories and recent commits
+- 📧 **Email Notifications**: Subscribe to receive email alerts when users make new commits
+- 🎛️ **Flexible Scheduling**: Choose between daily summaries, weekly digests, or real-time notifications
+- 💾 **Persistent Subscriptions**: SQLite database stores subscription preferences
+- 🔄 **Background Processing**: Automated commit checking via API endpoints
+
+## Quick Start
+
+### 1. Setup
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# Clone and install dependencies
+npm install
+
+# Setup database and generate Prisma client
+npm run setup
+# or manually:
+# npx prisma generate
+# npx prisma db push
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Environment Variables
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Create a `.env.local` file with:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```env
+# Database (SQLite by default)
+DATABASE_URL="file:./dev.db"
 
-## Learn More
+# GitHub API Token (optional, for higher rate limits)
+GITHUB_TOKEN="your_github_token_here"
 
-To learn more about Next.js, take a look at the following resources:
+# Resend API Key (required for email notifications)
+RESEND_API_KEY="your_resend_api_key_here"
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+# Security (change this in production)
+CRON_SECRET="your_secure_random_string"
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### 3. Email Setup
 
-## Deploy on Vercel
+1. **Sign up for Resend**: Go to [resend.com](https://resend.com) and create an account
+2. **Add your domain**: In Resend dashboard, add and verify your domain
+3. **Get API key**: Copy your API key to `RESEND_API_KEY`
+4. **Update email sender**: Modify the `from` field in `src/lib/email.ts` to use your verified domain
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### 4. Run the Application
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+# Development
+npm run dev
+
+# Production
+npm run build
+npm start
+```
+
+Visit [http://localhost:3000](http://localhost:3000) to use the application.
+
+## Usage
+
+### Using the Web Interface
+
+1. **Search for a GitHub user**: Enter a username in the search box
+2. **Browse repositories**: Select repositories to view recent commits
+3. **Subscribe to notifications**:
+   - Enter your email address
+   - Choose notification frequency (daily, weekly, real-time)
+   - Click "Subscribe"
+
+### Subscription Options
+
+- **Daily Summary**: Receive one email per day with all new commits
+- **Weekly Summary**: Receive a weekly digest of all commits
+- **Real-time**: Get notified immediately when new commits are pushed
+
+## Background Job Setup
+
+For automated commit checking, set up a cron job that calls the API endpoint:
+
+```bash
+# Check every 15 minutes
+*/15 * * * * curl -H "Authorization: Bearer YOUR_CRON_SECRET" https://yourdomain.com/api/check-commits
+```
+
+Or use a service like:
+- **Vercel Cron Jobs**: Built-in cron support
+- **Railway**: Cron jobs in settings
+- **GitHub Actions**: Scheduled workflows
+- **cron-job.org**: Free cron service
+
+## API Endpoints
+
+### Check for New Commits
+`GET /api/check-commits`
+
+Triggers the background job to check all subscriptions for new commits.
+
+**Headers:**
+- `Authorization: Bearer YOUR_CRON_SECRET` (if CRON_SECRET is set)
+
+### Subscription Management
+`POST /api/subscriptions` - Create subscription (server action)
+`GET /api/subscriptions` - Get user subscriptions (server action)
+`DELETE /api/subscriptions/[id]` - Delete subscription (server action)
+
+## Development
+
+### Database Schema
+
+The application uses Prisma with the following models:
+
+```prisma
+model Subscription {
+  id        String   @id @default(cuid())
+  email     String
+  username  String   // GitHub username to monitor
+  frequency String   @default("daily")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  lastChecked DateTime?
+  isActive  Boolean  @default(true)
+}
+
+model CommitNotification {
+  id            String   @id @default(cuid())
+  subscriptionId String
+  subscription  Subscription @relation(fields: [subscriptionId], references: [id])
+  commitSha     String
+  commitMessage String
+  repoName      String
+  author        String
+  commitDate    DateTime
+  sentAt        DateTime @default(now())
+}
+```
+
+### Project Structure
+
+```
+src/
+├── app/
+│   ├── actions/          # Server actions
+│   │   ├── github.ts     # GitHub API integration
+│   │   └── subscriptions.ts # Subscription management
+│   ├── api/
+│   │   └── check-commits/ # Background job endpoint
+│   └── ...
+├── components/
+│   └── GitHubWatcher.tsx # Main UI component
+├── lib/
+│   ├── db.ts             # Database connection
+│   ├── email.ts          # Resend integration
+│   ├── commit-checker.ts # Background job logic
+│   └── ...
+```
+
+## Deployment
+
+### Recommended Platforms
+
+- **Vercel**: Easy deployment with cron job support
+- **Railway**: Good for full-stack apps with databases
+- **Netlify**: Static frontend with serverless functions
+
+### Production Considerations
+
+1. **Database**: Switch from SQLite to PostgreSQL for production
+2. **Environment Variables**: Use proper secrets management
+3. **Rate Limits**: Monitor GitHub API usage
+4. **Email Deliverability**: Ensure proper SPF/DKIM/DMARC setup
+5. **Monitoring**: Add logging and error tracking
+
+### Example Deployment
+
+```bash
+# Vercel (recommended)
+npm install -g vercel
+vercel --prod
+
+# Or use GitHub integration for automatic deployments
+```
+
+## Troubleshooting
+
+### Common Issues
+
+1. **GitHub API Rate Limits**: Add a GitHub token for higher limits
+2. **Email Not Sending**: Check Resend API key and domain verification
+3. **Database Errors**: Run `npx prisma db push` to sync schema
+4. **Cron Job Not Working**: Ensure proper authentication and endpoint URL
+
+### Logs
+
+Check the console for:
+- Background job execution logs
+- Email sending status
+- Database connection errors
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests if applicable
+5. Submit a pull request
+
+## License
+
+MIT License - see LICENSE file for details.

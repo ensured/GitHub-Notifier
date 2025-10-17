@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2 } from "lucide-react";
+import { Loader2, Mail, CheckCircle, XCircle } from "lucide-react";
 import { GitHubRepo, GitHubCommit } from "@/lib/github-api";
 import { formatDistanceToNow } from "date-fns";
 import {
@@ -20,6 +20,7 @@ import {
   searchUserRepositories,
 } from "@/app/actions/github";
 import { getGitHubToken } from "@/lib/github-token";
+import { createSubscription, getSubscriptions, deleteSubscription } from "@/app/actions/subscriptions";
 
 interface RepoWithLastCommit extends GitHubRepo {
   lastCommitDate: string | null;
@@ -37,6 +38,12 @@ export default function GitHubWatcher() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [hasSearched, setHasSearched] = useState(false);
+  const [subscriptionEmail, setSubscriptionEmail] = useState("");
+  const [subscriptionFrequency, setSubscriptionFrequency] = useState<"daily" | "weekly" | "realtime">("daily");
+  const [subscriptionLoading, setSubscriptionLoading] = useState(false);
+  const [subscriptionError, setSubscriptionError] = useState("");
+  const [subscriptionSuccess, setSubscriptionSuccess] = useState("");
+  const [isSubscribed, setIsSubscribed] = useState(false);
   const searchInProgressRef = useRef(false);
 
   const handleSearch = async () => {
@@ -53,6 +60,8 @@ export default function GitHubWatcher() {
     searchInProgressRef.current = true;
     setLoading(true);
     setError("");
+    setSubscriptionError("");
+    setSubscriptionSuccess("");
     setHasSearched(true);
     setRepos([]);
     setReposWithCommits([]);
@@ -71,6 +80,10 @@ export default function GitHubWatcher() {
       setReposWithCommits(searchResult.reposWithCommits);
       setSelectedRepo(searchResult.repos[0] || "");
       setCommits(searchResult.commits);
+
+      // Check if user is already subscribed (you'd need to implement this)
+      // For now, we'll assume they're not subscribed
+      setIsSubscribed(false);
     } catch {
       setError("Failed to fetch repositories. Please check the username.");
       setRepos([]);
@@ -79,6 +92,41 @@ export default function GitHubWatcher() {
     } finally {
       setLoading(false);
       searchInProgressRef.current = false;
+    }
+  };
+
+  const handleSubscribe = async () => {
+    if (!username || !subscriptionEmail) {
+      setSubscriptionError("Please enter both username and email");
+      return;
+    }
+
+    setSubscriptionLoading(true);
+    setSubscriptionError("");
+    setSubscriptionSuccess("");
+
+    try {
+      console.log("Attempting to subscribe:", { email: subscriptionEmail, username, frequency: subscriptionFrequency });
+
+      const result = await createSubscription({
+        email: subscriptionEmail,
+        username,
+        frequency: subscriptionFrequency,
+      });
+
+      console.log("Subscription result:", result);
+
+      if (result.success) {
+        setSubscriptionSuccess("Successfully subscribed! You'll receive email notifications for new commits.");
+        setIsSubscribed(true);
+      } else {
+        setSubscriptionError(result.error || "Failed to subscribe");
+      }
+    } catch (error: any) {
+      console.error("Subscription error:", error);
+      setSubscriptionError(`Failed to subscribe: ${error.message || "Unknown error"}`);
+    } finally {
+      setSubscriptionLoading(false);
     }
   };
 
@@ -221,6 +269,85 @@ export default function GitHubWatcher() {
                   })}
                 </SelectContent>
               </Select>
+            </div>
+          )}
+
+          {/* Subscription Section */}
+          {hasSearched && username && (
+            <div className="space-y-4 p-4 rounded-lg bg-muted/30 border border-border/50">
+              <div className="flex items-center gap-2">
+                <Mail className="w-4 h-4 text-primary" />
+                <h3 className="text-sm font-semibold text-foreground">
+                  Get Notified
+                </h3>
+              </div>
+
+              {isSubscribed ? (
+                <div className="flex items-center gap-2 p-3 rounded-lg bg-green-50 border border-green-200">
+                  <CheckCircle className="w-4 h-4 text-green-600" />
+                  <span className="text-sm text-green-700">
+                    You're subscribed to {username}'s commits!
+                  </span>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-xs text-muted-foreground">
+                    Subscribe to receive email notifications when {username} makes new commits.
+                  </p>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <Input
+                      placeholder="Your email address"
+                      type="email"
+                      value={subscriptionEmail}
+                      onChange={(e) => setSubscriptionEmail(e.target.value)}
+                      className="bg-background/50 border-border/50 focus:border-primary/50"
+                    />
+                    <Select value={subscriptionFrequency} onValueChange={(value: "daily" | "weekly" | "realtime") => setSubscriptionFrequency(value)}>
+                      <SelectTrigger className="bg-background/50 border-border/50">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="daily">Daily Summary</SelectItem>
+                        <SelectItem value="weekly">Weekly Summary</SelectItem>
+                        <SelectItem value="realtime">Real-time</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      onClick={handleSubscribe}
+                      disabled={subscriptionLoading}
+                      className="bg-primary hover:bg-primary/90"
+                    >
+                      {subscriptionLoading ? (
+                        <>
+                          <Loader2 className="animate-spin mr-2 h-4 w-4" />
+                          Subscribing...
+                        </>
+                      ) : (
+                        "Subscribe"
+                      )}
+                    </Button>
+                  </div>
+
+                  {subscriptionError && (
+                    <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+                      <XCircle className="w-4 h-4 text-destructive" />
+                      <span className="text-sm text-destructive">
+                        {subscriptionError}
+                      </span>
+                    </div>
+                  )}
+
+                  {subscriptionSuccess && (
+                    <div className="flex items-center gap-2 p-3 rounded-lg bg-green-50 border border-green-200">
+                      <CheckCircle className="w-4 h-4 text-green-600" />
+                      <span className="text-sm text-green-700">
+                        {subscriptionSuccess}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
