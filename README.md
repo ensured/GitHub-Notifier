@@ -30,8 +30,8 @@ npm run setup
 Create a `.env.local` file with:
 
 ```env
-# Database (SQLite by default)
-DATABASE_URL="file:./dev.db"
+# PostgreSQL Database (recommended for production)
+DATABASE_URL="your_postgresql_connection_string_here"
 
 # GitHub API Token (optional, for higher rate limits)
 GITHUB_TOKEN="your_github_token_here"
@@ -50,7 +50,25 @@ CRON_SECRET="your_secure_random_string"
 3. **Get API key**: Copy your API key to `RESEND_API_KEY`
 4. **Update email sender**: Modify the `from` field in `src/lib/email.ts` to use your verified domain
 
-### 4. Run the Application
+### 4. Database Setup
+
+For production, use PostgreSQL:
+
+1. **Set up PostgreSQL database** (Neon, Supabase, or your own)
+2. **Add connection string** to `DATABASE_URL` in your environment variables
+3. **Deploy and run** - the schema will be automatically applied
+
+For development with SQLite:
+
+```bash
+# Generate Prisma client
+npx prisma generate
+
+# Apply schema to database
+npx prisma db push
+```
+
+### 5. Run the Application
 
 ```bash
 # Development
@@ -90,6 +108,7 @@ For automated commit checking, set up a cron job that calls the API endpoint:
 ```
 
 Or use a service like:
+
 - **Vercel Cron Jobs**: Built-in cron support
 - **Railway**: Cron jobs in settings
 - **GitHub Actions**: Scheduled workflows
@@ -98,14 +117,17 @@ Or use a service like:
 ## API Endpoints
 
 ### Check for New Commits
+
 `GET /api/check-commits`
 
 Triggers the background job to check all subscriptions for new commits.
 
 **Headers:**
+
 - `Authorization: Bearer YOUR_CRON_SECRET` (if CRON_SECRET is set)
 
 ### Subscription Management
+
 `POST /api/subscriptions` - Create subscription (server action)
 `GET /api/subscriptions` - Get user subscriptions (server action)
 `DELETE /api/subscriptions/[id]` - Delete subscription (server action)
@@ -199,6 +221,7 @@ vercel --prod
 ### Logs
 
 Check the console for:
+
 - Background job execution logs
 - Email sending status
 - Database connection errors
